@@ -32,7 +32,7 @@ jobs:
                - 'backend/**'
   backend-tests:
     needs: changes
-    if: ${{ steps.changes.outputs.backend == 'true' }}
+    if: ${{ needs.changes.outputs.backend == 'true' }}
     name: Run backend tests
     runs-on: ubuntu-lastest
     defaults:
@@ -54,9 +54,12 @@ jobs:
 
   frontend-tests:
     needs: changes
-    if: ${{ steps.changes.outputs.frontend == 'true' }}
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     name: Run frontend tests
     runs-on: ubuntu-lastest
+    defaults:
+      run:
+        working-directory: ./frontend
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node ${{ env.NODE_VERSION }}
