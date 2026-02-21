@@ -34,7 +34,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.backend == 'true' }}
     name: Run backend tests
-    runs-on: ubuntu-lastest
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./backend
@@ -56,7 +56,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     name: Run frontend tests
-    runs-on: ubuntu-lastest
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./frontend
