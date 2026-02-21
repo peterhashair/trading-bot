@@ -18,5 +18,5 @@ RUN npm run build:app
 
 EXPOSE 80
 EXPOSE 443
-# Start the server using the production build
+# Start the server using the production
 CMD [ "npm", "start" ]
