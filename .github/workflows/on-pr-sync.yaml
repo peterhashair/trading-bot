@@ -40,6 +40,8 @@ jobs:
         working-directory: ./backend
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: ./backend
       - name: Setup Node ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
@@ -62,6 +64,8 @@ jobs:
         working-directory: ./frontend
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: ./frontend
       - name: Setup Node ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
