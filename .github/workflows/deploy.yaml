@@ -6,7 +6,7 @@ on:
      type: [published]
 
 env:
-  NODE_VERSION: 23
+  NODE_VERSION: ${{ vars.NODE_VERSION }}
 
 jobs:
   backend-tests:
@@ -28,3 +28,8 @@ jobs:
 
       - name: run test
         run : npm run test:cov
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
