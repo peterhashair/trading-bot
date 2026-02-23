@@ -1,16 +1,16 @@
-import * as cdk from 'aws-cdk-lib/core';
+import { Stack, StackProps } from 'aws-cdk-lib/core';
 import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { InfraFrontendStack } from "./infra-frontend-stack";
+import { InfraBackendStack } from "./infra-backend-stack";
 
-export class InfraStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
 
-    // The code that defines your stack goes here
+export class InfraStack extends Stack {
+    constructor(scope: Construct, id: string, props?: StackProps) {
+        super(scope, id, props);
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'InfraQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
-  }
+        const backendStack = new InfraBackendStack(this, 'InfraBackendStack');
+
+        const frontendStack = new InfraFrontendStack(this, 'InfraFrontendStack');
+
+    }
 }
