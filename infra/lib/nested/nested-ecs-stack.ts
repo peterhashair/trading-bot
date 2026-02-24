@@ -1,5 +1,4 @@
 import { Duration, NestedStack, NestedStackProps } from 'aws-cdk-lib';
-
 import { Construct } from 'constructs';
 import { NetworkLoadBalancedFargateService, NetworkLoadBalancedServiceRecordType } from 'aws-cdk-lib/aws-ecs-patterns';
 import { IVpc, Port } from 'aws-cdk-lib/aws-ec2';
@@ -16,6 +15,7 @@ import {
 } from 'aws-cdk-lib/aws-apigateway';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { ISecret } from 'aws-cdk-lib/aws-secretsmanager';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Profile } from "../../bin/infra";
 
 export interface NestedEcsStackProps extends NestedStackProps {
@@ -26,6 +26,7 @@ export interface NestedEcsStackProps extends NestedStackProps {
     secrets: ISecret;
     apiGateway: Resource;
     auth?: IAuthorizer;
+    policyStatement: PolicyStatement;
 }
 
 export class NestedEcsStack extends NestedStack {
@@ -36,19 +37,17 @@ export class NestedEcsStack extends NestedStack {
     constructor(scope: Construct, id: string, props: NestedEcsStackProps) {
         super(scope, id, props);
 
-        const repository = Repository.fromRepositoryName(this, `${ props.profile }-infra-repository`, 'poe-infra-services');
+        const repository = Repository.fromRepositoryName(this, `${props.profile}-infra-repository`, 'poe-infra-services');
 
-        const cluster = new Cluster(this, `${ props.profile }-infra-cluster`, {
-            clusterName: `${ props.profile }-infra-cluster`,
+        const cluster = new Cluster(this, `${props.profile}-infra-cluster`, {
+            clusterName: `${props.profile}-infra-cluster`,
             vpc: props.vpc,
         });
 
-
-        // Create a load-balanced Fargate service and make it public
-        this.fargateService = new NetworkLoadBalancedFargateService(this, `${ props.profile }-infra-fargate`, {
-            serviceName: `${ props.profile }-infra-fargate`,
-            cluster: cluster, // Required
-            desiredCount: props.profile === Profile.Prod ? 3 : 1, // Default is 1
+        this.fargateService = new NetworkLoadBalancedFargateService(this, `${props.profile}-infra-fargate`, {
+            serviceName: `${props.profile}-infra-fargate`,
+            cluster: cluster,
+            desiredCount: props.profile === Profile.Prod ? 3 : 1,
             circuitBreaker: {
                 rollback: true,
             },
@@ -60,14 +59,14 @@ export class NestedEcsStack extends NestedStack {
                 environment: props.env,
                 containerPort: 80,
                 enableLogging: true,
-                containerName: `${ props.profile }-infra-services`,
+                containerName: `${props.profile}-infra-services`,
             },
             enableExecuteCommand: true,
-            publicLoadBalancer: false, // Default is true
+            publicLoadBalancer: false,
             assignPublicIp: false,
             listenerPort: 80,
-            cpu: props.profile === Profile.Prod ? 512 : 2048,
-            memoryLimitMiB: props.profile === Profile.Prod ? 2048 : 4096,
+            cpu: props.profile === Profile.Prod ? 2048 : 512,
+            memoryLimitMiB: props.profile === Profile.Prod ? 4096 : 2048,
             runtimePlatform: {
                 operatingSystemFamily: OperatingSystemFamily.LINUX,
                 cpuArchitecture: CpuArchitecture.ARM64,
@@ -75,32 +74,25 @@ export class NestedEcsStack extends NestedStack {
             recordType: NetworkLoadBalancedServiceRecordType.ALIAS,
         });
 
-        //allow port
+        this.fargateService.taskDefinition.taskRole.addToPrincipalPolicy(props.policyStatement);
+
         this.fargateService.service.connections.allowInternally(Port.tcp(6379));
         this.fargateService.service.connections.allowInternally(Port.tcp(5432));
         this.fargateService.service.connections.allowFromAnyIpv4(Port.tcp(80));
 
-        //permission allow
-        // props.bucket.grantReadWrite(this.fargateService.taskDefinition.taskRole);
-        // props.bucket.grantDelete(this.fargateService.taskDefinition.taskRole);
-        // props.userTable.grantReadWriteData(this.fargateService.taskDefinition.taskRole);
-        // this.fargateService.taskDefinition.taskRole.addToPrincipalPolicy(props.policyStatement);
-        // props.appointmentActionQueue.grantSendMessages(this.fargateService.taskDefinition.taskRole);
-
-        // Setup AutoScaling
         const scaling = this.fargateService.service.autoScaleTaskCount({ maxCapacity: 2 });
-        scaling.scaleOnCpuUtilization(`${ props.profile }-auto-scaling`, {
+        scaling.scaleOnCpuUtilization(`${props.profile}-auto-scaling`, {
             targetUtilizationPercent: 50,
             scaleInCooldown: Duration.seconds(60),
             scaleOutCooldown: Duration.seconds(60),
         });
 
-        this.link = new VpcLink(this, `${ props.profile }-infra-vpc-link`, {
-            vpcLinkName: `${ props.profile }-infra-vpc-link`,
+        this.link = new VpcLink(this, `${props.profile}-infra-vpc-link`, {
+            vpcLinkName: `${props.profile}-infra-vpc-link`,
             targets: [this.fargateService.loadBalancer],
         });
 
-        this.integration = new HttpIntegration(`http://${ this.fargateService.loadBalancer.loadBalancerDnsName }/{proxy}`, {
+        this.integration = new HttpIntegration(`http://${this.fargateService.loadBalancer.loadBalancerDnsName}/{proxy}`, {
             httpMethod: 'ANY',
             options: {
                 connectionType: ConnectionType.VPC_LINK,
