@@ -1,4 +1,4 @@
-import { CfnParameter, Stack } from "aws-cdk-lib";
+import { NestedStack, NestedStackProps, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { NestedCognitoStack } from "./nested/nested-cognito-stack";
 import { NestedRedisStack } from "./nested/nested-redis-stack";
@@ -8,45 +8,44 @@ import { NestedRdsStack } from "./nested/nested-rds-stack";
 import { ApiKeySourceType, RestApi } from "aws-cdk-lib/aws-apigateway";
 import { NestedEcsStack } from "./nested/nested-ecs-stack";
 
-export class InfraBackendStack extends Stack {
-    public static DATABASE_NAME = 'tradingbot';
+export interface InfraBackendStackProps extends NestedStackProps {
+    profile: Profile;
+    version: string;
+    corsOrigin: string;
+}
 
-    constructor(scope: Construct, id: string, props?: any) {
+export class InfraBackendStack extends NestedStack {
+    public static DATABASE_NAME = 'tradingbot';
+    public readonly apiUrl: string;
+    public readonly userPoolId: string;
+    public readonly appClientId: string;
+
+    constructor(scope: Construct, id: string, props: InfraBackendStackProps) {
         super(scope, id, props);
 
-        const version = new CfnParameter(this, 'versionNumber', {
-            type: 'String',
-            default: 'latest',
-        }).valueAsString; // get the value of the parameter as string
+        const cognitoStack = new NestedCognitoStack(this, `${id}-cognito`);
 
+        const vpcStack = new NestedNetworkStack(this, `${id}-vpc`);
 
-        const cognitoStack = new NestedCognitoStack(this, id);
-
-        const vpcStack = new NestedNetworkStack(this, `${ id }-vpc`);
-
-        //init redis
-        const redisStack = new NestedRedisStack(this, `${ id }-redis`, {
-            nodes: Profile.Prod ? 3 : 1,
+        const redisStack = new NestedRedisStack(this, `${id}-redis`, {
+            nodes: props.profile === Profile.Prod ? 3 : 1,
             vpc: vpcStack.vpc,
             nodeType: props.profile === Profile.Prod ? 'cache.m6g.large' : 'cache.t4g.medium',
             existSecurityGroupIds: [vpcStack.internal.securityGroupId],
             internalSecurityGroup: vpcStack.internal,
-            externalSecurityGroup: vpcStack.external
+            externalSecurityGroup: vpcStack.external,
         });
 
-        //init db
-        const dbStack = new NestedRdsStack(this, `${ id }-rds-storage-stack`, {
+        const dbStack = new NestedRdsStack(this, `${id}-rds-storage-stack`, {
             vpc: vpcStack.vpc,
             databaseName: InfraBackendStack.DATABASE_NAME,
             internalSecurityGroup: vpcStack.internal,
             externalSecurityGroup: vpcStack.external,
         });
 
-
-        //setup ENV
         const environment = {
             PROFILE: props.profile,
-            CDK_DEFAULT_REGION: props.env?.region ?? 'us-east-1',
+            CDK_DEFAULT_REGION: Stack.of(this).region,
             ECS: 'enable',
             DB_HOST: dbStack.rdsCluster.clusterEndpoint.hostname,
             DB_PORT: dbStack.rdsCluster.clusterEndpoint.port.toString(),
@@ -58,14 +57,14 @@ export class InfraBackendStack extends Stack {
             REDIS_ENDPOINT: redisStack.cacheCluster.attrRedisEndpointAddress,
             REDIS_PORT: redisStack.cacheCluster.attrRedisEndpointPort,
             REDIS_TYPE: 'cluster',
-            VERSION: version,
+            VERSION: props.version,
+            COGNITO_USER_POOL_ID: cognitoStack.userPool.userPoolId,
+            COGNITO_CLIENT_ID: cognitoStack.appClientId,
         };
 
-
-        //todo need to update this to frontend url
-        const api = new RestApi(this, `${ id }-rest-api`, {
+        const api = new RestApi(this, `${id}-rest-api`, {
             defaultCorsPreflightOptions: {
-                allowOrigins: ['*'],
+                allowOrigins: [props.corsOrigin],
                 allowHeaders: ['*'],
                 allowMethods: ['*'],
             },
@@ -73,19 +72,21 @@ export class InfraBackendStack extends Stack {
         });
 
         const apiV1 = api.root.addResource('v1');
-        const ecsStack = new NestedEcsStack(this, `${ props.profile }-ecs-stack`, {
+        const ecsStack = new NestedEcsStack(this, `${props.profile}-ecs-stack`, {
             profile: props.profile,
             env: environment,
-            version: version,
+            version: props.version,
             vpc: vpcStack.vpc,
             apiGateway: apiV1,
             auth: cognitoStack.authorizer,
-            secrets: dbStack.getSecrets()
+            secrets: dbStack.getSecrets(),
+            policyStatement: cognitoStack.cognitoPolicy,
         });
 
         dbStack.grantRead(ecsStack.fargateService.taskDefinition.taskRole);
 
+        this.apiUrl = api.url;
+        this.userPoolId = cognitoStack.userPool.userPoolId;
+        this.appClientId = cognitoStack.appClientId;
     }
-
-
 }

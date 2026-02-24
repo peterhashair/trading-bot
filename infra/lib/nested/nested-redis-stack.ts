@@ -22,7 +22,7 @@ export class NestedRedisStack extends NestedStack {
         super(scope, id);
         const redisSubnetGroup = new CfnSubnetGroup(this, `${ id }-redis-subnet-group`, {
             description: 'Subnet group for the redis cluster',
-            subnetIds: props.vpc.publicSubnets.map((ps) => ps.subnetId),
+            subnetIds: props.vpc.privateSubnets.map((ps) => ps.subnetId),
             cacheSubnetGroupName: `${ id }-redis-subnet-group-name`,
         });
 
