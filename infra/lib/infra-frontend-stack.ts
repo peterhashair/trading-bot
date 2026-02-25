@@ -3,11 +3,11 @@ import { Construct } from "constructs";
 import { BlockPublicAccess, Bucket } from "aws-cdk-lib/aws-s3";
 import { CachePolicy, Distribution, ViewerProtocolPolicy } from "aws-cdk-lib/aws-cloudfront";
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
-import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
-import { join } from 'path';
 
 export class InfraFrontendStack extends NestedStack {
     public readonly domainName: string;
+    public readonly bucketName: string;
+    public readonly distributionId: string;
 
     constructor(scope: Construct, id: string, props?: NestedStackProps) {
         super(scope, id, props);
@@ -30,15 +30,9 @@ export class InfraFrontendStack extends NestedStack {
             ],
         });
 
-        new BucketDeployment(this, `${id}-deploy`, {
-            sources: [Source.asset(join(__dirname, '../../frontend/dist'))],
-            destinationBucket: frontendBucket,
-            distribution: cdn,
-            distributionPaths: ['/*'],
-            prune: false,
-        });
-
         this.domainName = cdn.domainName;
+        this.bucketName = frontendBucket.bucketName;
+        this.distributionId = cdn.distributionId;
         new CfnOutput(this, `${id}-url`, { value: cdn.domainName });
     }
 }
