@@ -13,8 +13,8 @@ export class NestedCognitoStack extends NestedStack {
     constructor(scope: Construct, id: string, props?: NestedStackProps) {
         super(scope, id, props);
 
-        this.userPool = new UserPool(this, `${id}-cognito-user-pool`, {
-            userPoolName: `${id}-user-pool`,
+        this.userPool = new UserPool(this, `${ id }-cognito-user-pool`, {
+            userPoolName: `${ id }-user-pool`,
             standardAttributes: {
                 email: { required: true, mutable: true },
                 phoneNumber: { required: false, mutable: true },
@@ -30,8 +30,8 @@ export class NestedCognitoStack extends NestedStack {
             signInAliases: { username: true, email: true },
         });
 
-        const appClient = this.userPool.addClient(`${id}-pool-client`, {
-            userPoolClientName: `${id}-pool-client`,
+        const appClient = this.userPool.addClient(`${ id }-pool-client`, {
+            userPoolClientName: `${ id }-pool-client`,
             accessTokenValidity: Duration.days(7),
             idTokenValidity: Duration.days(3),
             refreshTokenValidity: Duration.days(30),
@@ -51,8 +51,8 @@ export class NestedCognitoStack extends NestedStack {
             resources: [this.userPool.userPoolArn],
         });
 
-        this.authorizer = new CognitoUserPoolsAuthorizer(this, `${id}-cognito-authorizer`, {
-            authorizerName: `${id}-cognito-authorizer`,
+        this.authorizer = new CognitoUserPoolsAuthorizer(this, `${ id }-cognito-authorizer`, {
+            authorizerName: `${ id }-cognito-authorizer`,
             cognitoUserPools: [this.userPool],
             identitySource: 'method.request.header.Authorization',
         });

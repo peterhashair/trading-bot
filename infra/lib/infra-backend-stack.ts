@@ -13,7 +13,7 @@ export interface InfraBackendStackProps extends NestedStackProps {
     version: string;
     corsOrigin: string;
 }
-
+  
 export class InfraBackendStack extends NestedStack {
     public static DATABASE_NAME = 'tradingbot';
     public readonly apiUrl: string;
