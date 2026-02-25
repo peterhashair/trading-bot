@@ -23,7 +23,7 @@ export class InfraStack extends Stack {
         const backendStack = new InfraBackendStack(this, 'InfraBackendStack', {
             profile: props.profile,
             version,
-            corsOrigin: `https://${frontendStack.domainName}`,
+            corsOrigin: `https://${ frontendStack.domainName }`,
         });
 
         new CfnOutput(this, 'ApiGatewayUrl', {
@@ -42,7 +42,7 @@ export class InfraStack extends Stack {
         });
 
         new CfnOutput(this, 'FrontendUrl', {
-            value: `https://${frontendStack.domainName}`,
+            value: `https://${ frontendStack.domainName }`,
             description: 'CloudFront distribution URL',
         });
     }

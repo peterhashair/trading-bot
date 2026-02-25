@@ -37,15 +37,15 @@ export class NestedEcsStack extends NestedStack {
     constructor(scope: Construct, id: string, props: NestedEcsStackProps) {
         super(scope, id, props);
 
-        const repository = Repository.fromRepositoryName(this, `${props.profile}-infra-repository`, 'poe-infra-services');
+        const repository = Repository.fromRepositoryName(this, `${ props.profile }-infra-repository`, 'poe-infra-services');
 
-        const cluster = new Cluster(this, `${props.profile}-infra-cluster`, {
-            clusterName: `${props.profile}-infra-cluster`,
+        const cluster = new Cluster(this, `${ props.profile }-infra-cluster`, {
+            clusterName: `${ props.profile }-infra-cluster`,
             vpc: props.vpc,
         });
 
-        this.fargateService = new NetworkLoadBalancedFargateService(this, `${props.profile}-infra-fargate`, {
-            serviceName: `${props.profile}-infra-fargate`,
+        this.fargateService = new NetworkLoadBalancedFargateService(this, `${ props.profile }-infra-fargate`, {
+            serviceName: `${ props.profile }-infra-fargate`,
             cluster: cluster,
             desiredCount: props.profile === Profile.Prod ? 3 : 1,
             circuitBreaker: {
@@ -59,7 +59,7 @@ export class NestedEcsStack extends NestedStack {
                 environment: props.env,
                 containerPort: 80,
                 enableLogging: true,
-                containerName: `${props.profile}-infra-services`,
+                containerName: `${ props.profile }-infra-services`,
             },
             enableExecuteCommand: true,
             publicLoadBalancer: false,
@@ -81,18 +81,18 @@ export class NestedEcsStack extends NestedStack {
         this.fargateService.service.connections.allowFromAnyIpv4(Port.tcp(80));
 
         const scaling = this.fargateService.service.autoScaleTaskCount({ maxCapacity: 2 });
-        scaling.scaleOnCpuUtilization(`${props.profile}-auto-scaling`, {
+        scaling.scaleOnCpuUtilization(`${ props.profile }-auto-scaling`, {
             targetUtilizationPercent: 50,
             scaleInCooldown: Duration.seconds(60),
             scaleOutCooldown: Duration.seconds(60),
         });
 
-        this.link = new VpcLink(this, `${props.profile}-infra-vpc-link`, {
-            vpcLinkName: `${props.profile}-infra-vpc-link`,
+        this.link = new VpcLink(this, `${ props.profile }-infra-vpc-link`, {
+            vpcLinkName: `${ props.profile }-infra-vpc-link`,
             targets: [this.fargateService.loadBalancer],
         });
 
-        this.integration = new HttpIntegration(`http://${this.fargateService.loadBalancer.loadBalancerDnsName}/{proxy}`, {
+        this.integration = new HttpIntegration(`http://${ this.fargateService.loadBalancer.loadBalancerDnsName }/{proxy}`, {
             httpMethod: 'ANY',
             options: {
                 connectionType: ConnectionType.VPC_LINK,

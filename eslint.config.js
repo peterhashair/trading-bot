@@ -27,7 +27,6 @@ export default defineConfig([
         rules: {
             'object-curly-spacing': 'off',
             '@stylistic/object-curly-spacing': ['error', 'always'],
-            '@stylistic/template-curly-spacing': ['error', 'always'],
             '@stylistic/jsx-curly-spacing': ['error', 'always'],
         },
     },
