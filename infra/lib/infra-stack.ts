@@ -45,5 +45,15 @@ export class InfraStack extends Stack {
             value: `https://${ frontendStack.domainName }`,
             description: 'CloudFront distribution URL',
         });
+
+        new CfnOutput(this, 'FrontendBucketName', {
+            value: frontendStack.bucketName,
+            description: 'S3 bucket name for frontend assets',
+        });
+
+        new CfnOutput(this, 'FrontendDistributionId', {
+            value: frontendStack.distributionId,
+            description: 'CloudFront distribution ID for cache invalidation',
+        });
     }
 }

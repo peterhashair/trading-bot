@@ -138,6 +138,29 @@ jobs:
             --parameters versionNumber=${{ needs.backend-ecr-upload.outputs.image_tag }}
         working-directory: ./infra
 
+      - name: Get frontend S3 bucket and CloudFront distribution
+        id: frontend_info
+        run: |
+          BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name InfraStack \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue | [0]" \
+            --output text)
+          DIST_ID=$(aws cloudformation describe-stacks \
+            --stack-name InfraStack \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendDistributionId'].OutputValue | [0]" \
+            --output text)
+          echo "bucket=$BUCKET" >> "$GITHUB_OUTPUT"
+          echo "dist_id=$DIST_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Sync frontend assets to S3
+        run: aws s3 sync frontend/dist s3://${{ steps.frontend_info.outputs.bucket }}/
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.frontend_info.outputs.dist_id }} \
+            --paths '/*'
+
   deploy-production:
     name: Deploy to production
     runs-on: ubuntu-latest
@@ -192,3 +215,26 @@ jobs:
             --context profile=prod \
             --parameters versionNumber=${{ needs.backend-ecr-upload.outputs.image_tag }}
         working-directory: ./infra
+
+      - name: Get frontend S3 bucket and CloudFront distribution
+        id: frontend_info
+        run: |
+          BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name InfraStack \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue | [0]" \
+            --output text)
+          DIST_ID=$(aws cloudformation describe-stacks \
+            --stack-name InfraStack \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendDistributionId'].OutputValue | [0]" \
+            --output text)
+          echo "bucket=$BUCKET" >> "$GITHUB_OUTPUT"
+          echo "dist_id=$DIST_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Sync frontend assets to S3
+        run: aws s3 sync frontend/dist s3://${{ steps.frontend_info.outputs.bucket }}/
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.frontend_info.outputs.dist_id }} \
+            --paths '/*'
